@@ -1,0 +1,21 @@
+{
+  "name": "repl.sh",
+  "version": "0.1.0",
+  "description": "Sometimes you need a shell.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "bin": {
+    "repl.sh": "./index.js"
+  },
+  "dependencies": {
+    "commander": "^2.16.0",
+    "ora": "^2.1.0",
+    "request": "^2.87.0",
+    "request-promise": "^4.2.2",
+    "ws": "^5.2.1"
+  }
+}
