@@ -1,6 +1,6 @@
 {
   "name": "repl.sh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Sometimes you need a shell.",
   "main": "index.js",
   "scripts": {
@@ -17,6 +17,8 @@
   },
   "dependencies": {
     "commander": "^2.16.0",
+    "gitignore-globs": "^0.1.1",
+    "glob": "^7.1.2",
     "ora": "^2.1.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
