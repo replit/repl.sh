@@ -11,7 +11,7 @@ const payloads = require('./payloads.js');
 program
   .version(package.version)
   .option('-G, --goval [host]', 'Goval host to connect to', 'eval.repl.it')
-  .option('-l, --language [language]', 'Language to use.', 'bash')
+  .option('-l, --language [language]', 'Language to use', 'bash')
   .parse(process.argv);
 
 let fo = o => o[Object.keys(o)[0]];
@@ -22,7 +22,7 @@ let prompt = (s) => spinner.text = s;
 const spinner = ora("Let's Go!").start();
 
 if ( !payloads[program.language] ) {
-    spinner.fail("Unknown language: " + program.language);
+    spinner.fail("Unsupported language: " + program.language);
     process.exit(1);
 }
 
@@ -73,7 +73,7 @@ let payload = payloads[program.language];
     if ( payload.main ) {
         let files = [{
             name: payload.main,
-            content: Buffer.from(payload.prog).toString('base64'),
+            content: Buffer.from(payload.shell).toString('base64'),
             encoding: 'base64'
         }]
         await(send({command: 'runProject', data:JSON.stringify(files)}));
@@ -103,11 +103,13 @@ let payload = payloads[program.language];
             } else if ( d.data ) {
                 spinner.succeed(d.data);
             }
-            process.stdin.setRawMode(false);
-            process.stdin.end();
+            if ( process.stdin ) {
+                process.stdin.setRawMode(false);
+                process.stdin.end();
+            }
             client.close();
         } else if ( d.command == "ready") {
-            console.log("");
+            prompt("Got shell, waiting for prompt")
         } else {
             console.log(d);
         }

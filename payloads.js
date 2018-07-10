@@ -1,4 +1,13 @@
 let payloads = {};
+
+payloads.bash = {
+    lang: 'bash',
+    main: 'main.sh',
+    shell: `
+TERM=xterm-color bash
+`
+};
+
 payloads.c = {
     lang: 'c',
     main: 'main.c',
@@ -12,13 +21,20 @@ int main(void) {
 `
 };
 
-payloads.bash = {
-    lang: 'bash',
-    main: 'main.sh',
+payloads.go = {
+    lang: 'go',
+    main: 'main.go',
     shell: `
-TERM=xterm-color bash
+package main
+import "syscall"
+import "os"
+func main() {
+	env := append(os.Environ(), "TERM=xterm-color")
+	syscall.Exec("/bin/bash", []string{}, env)
+}
 `
 };
+
 
 payloads.nodejs = {
     lang: 'nodejs',
