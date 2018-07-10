@@ -39,7 +39,7 @@ if ( program.F ) {
     }))
 }
 
-console.log(program.file);
+//console.log(program.file);
 
 let prompt = (s) => spinner.text = s;
 const spinner = ora("Let's Go!").start();
