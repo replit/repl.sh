@@ -1,6 +1,6 @@
 {
   "name": "repl.sh",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Sometimes you need a shell.",
   "main": "index.js",
   "scripts": {
@@ -20,7 +20,6 @@
     "ora": "^2.1.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
-    "ttystudio": "0.0.16",
     "ws": "^5.2.1"
   },
   "engines": {
