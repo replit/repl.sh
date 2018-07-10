@@ -20,6 +20,7 @@ let collect = (f, o) => o.concat(glob.sync(f, {nodir: true}));
 
 program
     .version(package.version)
+    .description('connect your local environment to repl.it')
     .option('-G, --goval [host]', 'goval host to connect to', 'eval.repl.it')
     .option('-P', 'project mode, implies -Fwr')
     .option('-l, --language [language]', 'language to use', 'bash')
