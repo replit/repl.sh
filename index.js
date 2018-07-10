@@ -16,6 +16,10 @@ program
 
 let fo = o => o[Object.keys(o)[0]];
 
+function exit(n){
+    console.log("\nIf you like this, you might want to check out Repl.it");
+    process.exit(n);
+}
 
 
 let prompt = (s) => spinner.text = s;
@@ -23,14 +27,14 @@ const spinner = ora("Let's Go!").start();
 
 if ( !payloads[program.language] ) {
     spinner.fail("Unsupported language: " + program.language);
-    process.exit(1);
+    exit(1);
 }
 
 let payload = payloads[program.language];
 
 
 ;(async function() {
-    prompt("Fetching token....")
+    prompt("Fetching free container from Repl.it ...")
     let resp = await request({
         url: 'https://repl.it/languages/' + payload.lang,
         headers: {
@@ -115,6 +119,7 @@ let payload = payloads[program.language];
             }
             clean = true;
             client.close();
+            exit(0);
         } else if ( d.command == "ready") {
             prompt("Got shell, waiting for prompt")
         } else {
@@ -127,5 +132,5 @@ let payload = payloads[program.language];
     
 })().catch(function(err) {
     spinner.fail(err);
-    process.exit(1);
+    exit(1);
 });

@@ -11,14 +11,19 @@
   "bin": {
     "repl.sh": "./index.js"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/replit/repl.sh"
+  },
   "dependencies": {
     "commander": "^2.16.0",
     "ora": "^2.1.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
+    "ttystudio": "0.0.16",
     "ws": "^5.2.1"
   },
-  "engines" : {
-    "node" : ">=7.9.0"
+  "engines": {
+    "node": ">=7.9.0"
   }
 }
