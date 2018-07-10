@@ -17,5 +17,8 @@
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
     "ws": "^5.2.1"
+  },
+  "engines" : {
+    "node" : ">=7.9.0"
   }
 }

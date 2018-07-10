@@ -47,7 +47,13 @@ let payload = payloads[program.language];
     //console.log(JSON.stringify(session, null, '  '));
 
     let client = new WebSocket('ws://' + program.goval + '/ws');
-    prompt("Connecting...\r");
+    let clean = false;
+    prompt("Connecting...");
+    client.on('close', function() {
+        if ( clean ) return;
+        spinner.fail("Socket closed?");
+        process.exit(1);
+    })
     await new Promise(function(res, rej) {
         client.on('open', (e) => {
             res(true);
@@ -64,7 +70,7 @@ let payload = payloads[program.language];
             res(JSON.parse(d));
         });
     })
-    prompt("Auth...       \r");
+    prompt("Auth...");
     await(send({command: 'auth', data: token}));
     //console.log("A", await read())
     await(send({ command: 'select_language', data: payload.lang}));
@@ -107,11 +113,14 @@ let payload = payloads[program.language];
                 process.stdin.setRawMode(false);
                 process.stdin.end();
             }
+            clean = true;
             client.close();
         } else if ( d.command == "ready") {
             prompt("Got shell, waiting for prompt")
         } else {
-            console.log(d);
+            if ( d.error ) {
+                spinner.fail(d.error);
+            }
         }
     });
 
