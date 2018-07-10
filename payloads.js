@@ -48,11 +48,15 @@ payloads.nodejs = {
     main: 'index.js',
     shell: `
 require('child_process').spawnSync('/bin/bash', {
-	env: {TERM: '$$TERM$$'},
+	env: Object.assign(process.env, {TERM: '$$TERM$$'}),
 	stdio: 'inherit'
 });
 `
 };
+
+payloads.node = payloads.nodejs;
+payloads.js = payloads.nodejs;
+payloads.javascript = payloads.nodejs;
 
 payloads.php = {
     lang: 'php',

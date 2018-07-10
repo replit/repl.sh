@@ -11,17 +11,20 @@ const program = require('commander');
 const package = require('./package.json');
 const payloads = require('./payloads.js');
 const giparse = require('gitignore-globs');
+const chokidar = require('chokidar');
 
 let collect = (f, o) => o.concat(glob.sync(f, {nodir: true}));
 
 program
-  .version(package.version)
-  .option('-G, --goval [host]', 'hoval host to connect to', 'eval.repl.it')
-  .option('-l, --language [language]', 'language to use', 'bash')
-  .option('-f, --file [value]', 'provide file to container', collect, [])
-  .option('-F', 'send files in current directory, honoring .gitignore')
-  .option('-s, --send [string]', 'send string after connect')
-  .parse(process.argv);
+    .version(package.version)
+    .option('-G, --goval [host]', 'goval host to connect to', 'eval.repl.it')
+    .option('-l, --language [language]', 'language to use', 'bash')
+    .option('-f, --file [value]', 'provide file to container (takes globs)', collect, [])
+    .option('-F', 'send files in current directory, honoring .gitignore')
+    .option('-w, --watch', 'watch files for changes and resend them')
+    .option('-s, --send [string]', 'send string after connect')
+    .option('-r, --reset', 'reset on change')
+    .parse(process.argv);
 
 let fo = o => o[Object.keys(o)[0]];
 
@@ -32,7 +35,10 @@ function exit(n){
 }
 
 if ( program.F ) {
-    let ignored = giparse('.gitignore');
+    let ignored = []
+    try {
+        ignored = giparse('.gitignore');
+    } catch ( e ) {}
     program.file = program.file.concat(glob.sync('**', {
         nodir: true,
         ignore: ignored
@@ -51,6 +57,33 @@ if ( !payloads[program.language] ) {
 
 let payload = payloads[program.language];
 
+async function launch(send) {
+  let payshell = payload.shell.replace(/\$\$TERM\$\$/g, process.env.TERM || 'xterm-color');
+
+    if ( payload.main ) {
+        let files = [{
+            name: payload.main,
+            content: Buffer.from(payshell).toString('base64'),
+            encoding: 'base64'
+        }];
+
+        for ( let f of program.file ) {
+            files.push({
+                //name: path.basename(f),
+                name: f,
+                content: fs.readFileSync(f, 'base64'),
+                encoding: 'base64'
+            })
+        }
+
+        await(send({command: 'runProject', data:JSON.stringify(files)}));
+    } else {
+        await (send({ command: 'eval', data: payshell}));
+    }
+
+    await send({ command: "input", data: "reset\r" + (program.send ? program.send : '') + "\r"});
+  
+}
 
 ;(async function() {
     prompt("Fetching free container from Repl.it ...")
@@ -103,30 +136,29 @@ let payload = payloads[program.language];
     prompt("Starting shell.. "  + (payload.main || 'eval'));
     await read();
 
-    let payshell = payload.shell.replace(/\$\$TERM\$\$/g, process.env.TERM || 'xterm-color');
-
-    if ( payload.main ) {
-        let files = [{
-            name: payload.main,
-            content: Buffer.from(payshell).toString('base64'),
-            encoding: 'base64'
-        }];
-
-        for ( let f of program.file ) {
-            files.push({
-                //name: path.basename(f),
-                name: f,
-                content: fs.readFileSync(f, 'base64'),
+    await launch(send);
+    let w;
+    if ( program.watch ) {
+        w = chokidar.watch(program.file,{
+            awaitWriteFinish: true
+        });
+        w.on('change', function(file) {
+            let fj = {
+                name: file,
+                content: fs.readFileSync(file, 'base64'),
                 encoding: 'base64'
-            })
-        }
-
-        await(send({command: 'runProject', data:JSON.stringify(files)}));
-    } else {
-        await (send({ command: 'eval', data: payshell}));
+            };
+            send({
+                command: 'write',
+                data: JSON.stringify(fj)
+            });
+            if ( program.reset ) {
+                spinner.info(`File ${file} changed, restarting...`)
+                send({command: 'stop'})
+                launch(send);
+            }
+        });
     }
-    await (send({ command: "input", data: "reset\r" + (program.send ? program.send : '') + "\r"}));
-
 
     readline.emitKeypressEvents(process.stdin);
     process.stdin.setRawMode(true);
@@ -147,8 +179,8 @@ let payload = payloads[program.language];
     }
     writer();
 
-    client.on('message', function(s) {
-        let d = JSON.parse(s);
+    while ( !clean ) {
+        let d = await read();
         if (d.command == "output" ) {
             //console.log(d);
             spinner.stop();
@@ -165,21 +197,21 @@ let payload = payloads[program.language];
             }
             clean = true;
             client.close();
+            if (w) w.close();
             exit(0);
         } else if ( d.command == "ready") {
-            prompt("Got shell, waiting for prompt")
+            prompt("Got shell, waiting for prompt")         
         } else if (d.command == "event:portOpen") {
             let j = JSON.parse(d.data);
             spinner.succeed(`Site open at https://${slug}--five-nine.repl.co (${j.port} -> 80)`);
         } else {
             if ( d.error ) {
                 spinner.fail(d.error);
+            } else if ( ['write','files'].indexOf(d.command) == -1 ) {
+                spinner.info(d.command + ":" + d.data);
             }
-            spinner.info(d.command + ":" + d.data);
         }
-    });
-
-    
+    }
 })().catch(function(err) {
     spinner.fail(err);
     exit(1);

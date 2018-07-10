@@ -16,6 +16,7 @@
     "url": "https://github.com/replit/repl.sh"
   },
   "dependencies": {
+    "chokidar": "^2.0.4",
     "commander": "^2.16.0",
     "gitignore-globs": "^0.1.1",
     "glob": "^7.1.2",
