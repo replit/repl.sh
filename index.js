@@ -8,36 +8,82 @@ const request = require('request-promise');
 const readline = require('readline');
 const ora = require('ora');
 const program = require('commander');
-const package = require('./package.json');
 const payloads = require('./payloads.js');
 const giparse = require('gitignore-globs');
 const chokidar = require('chokidar');
+const updateNotifier = require('update-notifier');
+const qs = require('querystring');
+
+const package = require('./package.json');
 
 let collect = (f, o) => o.concat(glob.sync(f, {nodir: true}));
 
 program
     .version(package.version)
     .option('-G, --goval [host]', 'goval host to connect to', 'eval.repl.it')
+    .option('-P', 'project mode, implies -Fwr')
     .option('-l, --language [language]', 'language to use', 'bash')
     .option('-f, --file [value]', 'provide file to container (takes globs)', collect, [])
     .option('-F', 'send files in current directory, honoring .gitignore')
     .option('-w, --watch', 'watch files for changes and resend them')
-    .option('-s, --send [string]', 'send string after connect')
+    .option('-c, --send [string]', 'send string after connect')
+    .option('-s, --save', 'commit files back to the replit')
     .option('-r, --reset', 'reset on change')
     .parse(process.argv);
 
 let fo = o => o[Object.keys(o)[0]];
+let notifier = updateNotifier({pkg: package});
+let jar = request.jar()
 
+let prompt = (s) => spinner.text = s;
+const spinner = ora("Let's Go!").start();
+
+//Project mode
+if ( program.P ) {
+    program.F = true;
+    program.watch = true;
+
+    if ( program.language == 'bash' ) { 
+        for ( let lang in payloads ) {
+            if ( payloads[lang].detect && payloads[lang].detect({
+                exists: (f) => !!fs.statSync(f) 
+            }) ) {
+               spinner.info("Detected lanauage to be: " + lang).start();
+                program.language = lang;
+                break;
+            }
+        }
+    }
+
+    if ( !program.send ) {
+        try {
+            let proc = fs.readFileSync('Procfile', 'utf8');
+            for ( let line of proc.split(/\n/g) ) {
+                let entry = line.match(/^(\w+):\s*(.*)$/)
+                if ( !entry ) continue;
+                if ( entry[1] == 'web' ) {
+                    spinner.info("Detected start command to be: " + entry[2]).start();
+                    program.send = 'exec ' + entry[2];
+                    break;
+                }
+            }
+        } catch (e) { }
+    }
+
+    if ( program.send ) program.reset = true;
+
+}
 
 function exit(n){
+    notifier.notify();
     console.log("\nIf you like this, you might want to check out Repl.it");
     process.exit(n);
 }
 
 if ( program.F ) {
-    let ignored = []
+    let ignored = ['node_modules/**', '**/.DS_Store', '**/Thumbs.db'];
     try {
-        ignored = giparse('.gitignore');
+        ignored = ignored.concat(giparse('.gitignore'));
     } catch ( e ) {}
     program.file = program.file.concat(glob.sync('**', {
         nodir: true,
@@ -47,8 +93,9 @@ if ( program.F ) {
 
 //console.log(program.file);
 
-let prompt = (s) => spinner.text = s;
-const spinner = ora("Let's Go!").start();
+let replid;
+
+
 
 if ( !payloads[program.language] ) {
     spinner.fail("Unsupported language: " + program.language);
@@ -68,13 +115,17 @@ async function launch(send) {
         }];
 
         for ( let f of program.file ) {
+            let b = fs.readFileSync(f);
             files.push({
                 //name: path.basename(f),
                 name: f,
-                content: fs.readFileSync(f, 'base64'),
+                content: b.toString('base64'),
                 encoding: 'base64'
             })
+            if ( program.save ) commit(f, b);
         }
+
+        await(new Promise((res,resj) => setTimeout(res,10000)));
 
         await(send({command: 'runProject', data:JSON.stringify(files)}));
     } else {
@@ -85,6 +136,27 @@ async function launch(send) {
   
 }
 
+async function commit(file, contents) {
+    let data;
+    try {
+       data = await request({
+            url: `https://repl.it/data/repls/signed_urls/${replid}/${qs.escape(file)}`,
+            jar: jar
+        });
+    } catch ( e ) {
+        spinner.error("Couldnt get token to write " + file);
+        return;
+    }
+    let target = JSON.parse(data).urls_by_action;
+    await request({
+        uri: target.write,
+        method: 'PUT',
+        body: contents
+    });
+    spinner.info("Wrote " + file + " to GCS");
+}
+
+
 ;(async function() {
     prompt("Fetching free container from Repl.it ...")
     let resp = await request({
@@ -94,7 +166,7 @@ async function launch(send) {
             'User-Agent': 'Mozilla/5.0 (repl.sh)'
         },
         simple: false,
-        jar: true
+        jar: jar
     });
 
     let sessionJSON = resp.match(/__NEXT_DATA__ = ([^\n]+)/im);
@@ -102,8 +174,9 @@ async function launch(send) {
     let repl = fo(session.props.initialState.repls.data)
     let token = repl.govalToken;
     let slug = repl.title;
+    replid = repl.id;
 
-    //console.log(JSON.stringify(session, null, '  '));
+    //console.log(JSON.stringify(repl, null, '  '));
 
     let client = new WebSocket('ws://' + program.goval + '/ws');
     let clean = false;
@@ -111,7 +184,7 @@ async function launch(send) {
     client.on('close', function() {
         if ( clean ) return;
         spinner.fail("Socket closed?");
-        process.exit(1);
+        return exit(1);
     })
     await new Promise(function(res, rej) {
         client.on('open', (e) => {
@@ -143,19 +216,21 @@ async function launch(send) {
             awaitWriteFinish: true
         });
         w.on('change', function(file) {
-            let fj = {
-                name: file,
-                content: fs.readFileSync(file, 'base64'),
-                encoding: 'base64'
-            };
-            send({
-                command: 'write',
-                data: JSON.stringify(fj)
-            });
+            console.log(file);
             if ( program.reset ) {
                 spinner.info(`File ${file} changed, restarting...`)
-                send({command: 'stop'})
-                launch(send);
+                send({command: 'stop'}).then(() => launch(send));
+            } else {
+                let fj = {
+                    name: file,
+                    content: fs.readFileSync(file, 'base64'),
+                    encoding: 'base64'
+                };
+
+                send({
+                    command: 'write',
+                    data: JSON.stringify(fj)
+                });
             }
         });
     }
@@ -198,7 +273,7 @@ async function launch(send) {
             clean = true;
             client.close();
             if (w) w.close();
-            exit(0);
+            return exit(0);
         } else if ( d.command == "ready") {
             prompt("Got shell, waiting for prompt")         
         } else if (d.command == "event:portOpen") {
@@ -214,5 +289,6 @@ async function launch(send) {
     }
 })().catch(function(err) {
     spinner.fail(err);
+    if ( err.stack ) console.log(err.stack);
     exit(1);
 });

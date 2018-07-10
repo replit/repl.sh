@@ -51,7 +51,8 @@ require('child_process').spawnSync('/bin/bash', {
 	env: Object.assign(process.env, {TERM: '$$TERM$$'}),
 	stdio: 'inherit'
 });
-`
+`,
+    detect: (fs) => fs.exists('package.json')
 };
 
 payloads.node = payloads.nodejs;
@@ -66,7 +67,8 @@ payloads.php = {
 
 system("TERM=$$TERM$$ /bin/bash");
 
-`
+`,
+    detect: (fs) => fs.exists('composer.json') || fs.exists('index.php')
 };
 
 payloads.python = {
@@ -75,7 +77,8 @@ payloads.python = {
     shell: `
 import os
 os.system("TERM=$$TERM$$ /bin/bash")
-`
+`,
+    detect: (fs) => fs.exists('requirements.json') || fs.exists('setup.py') || fs.exists('Pipfile')
 };
 
 payloads.python3 = {
@@ -92,7 +95,8 @@ payloads.ruby = {
     main: 'main.rb',
     shell: `
 Process.exec({"TERM"=>"$$TERM$$"}, "/bin/bash")
-`
+`,
+    detect: (fs) => fs.exists('Gemfile')
 };
 
 payloads.rust = {

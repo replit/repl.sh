@@ -23,6 +23,7 @@
     "ora": "^2.1.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
+    "update-notifier": "^2.5.0",
     "ws": "^5.2.1"
   },
   "engines": {
