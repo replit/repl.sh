@@ -13,7 +13,7 @@
   
     Usage: repl.sh [options]
   
-    connect your local environment to repl.it
+      connect your local environment to repl.it
   
     Options:
   
@@ -24,10 +24,16 @@
       -f, --file [value]         provide file to container (takes globs) (default: )
       -F                         send files in current directory, honoring .gitignore
       -w, --watch                watch files for changes and resend them
-      -c, --send [string]        send string after connect
+      -c, --send [string]        send string shell after connect
       -s, --save                 commit files back to the replit
       -r, --reset                reset on change
       -h, --help                 output usage information
+  
+    Examples:
+  
+      repl.sh      Connect to a bash shell in the cloud 
+      repl.sh -P   Upload the project in the current directry and attach
+  
 
 ## License
 

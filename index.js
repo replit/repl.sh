@@ -20,7 +20,7 @@ let collect = (f, o) => o.concat(glob.sync(f, { nodir: true }));
 
 program
   .version(package.version)
-  .description("connect your local environment to repl.it")
+  .description("  connect your local environment to repl.it")
   .option("-G, --goval [host]", "goval host to connect to", "eval.repl.it")
   .option("-P", "project mode, implies -Fwr")
   .option("-l, --language [language]", "language to use", "bash")
@@ -35,6 +35,16 @@ program
   .option("-c, --send [string]", "send string shell after connect")
   .option("-s, --save", "commit files back to the replit")
   .option("-r, --reset", "reset on change")
+  .on("--help", () =>
+    [
+      "",
+      "  Examples:",
+      "",
+      "    repl.sh      Connect to a bash shell in the cloud ",
+      "    repl.sh -P   Upload the project in the current directry and attach",
+      ""
+    ].map(x => console.log(x))
+  )
   .parse(process.argv);
 
 let fo = o => o[Object.keys(o)[0]];

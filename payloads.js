@@ -32,7 +32,8 @@ func main() {
 	env := append(os.Environ(), "TERM=$$TERM$$")
 	syscall.Exec("/bin/bash", []string{}, env)
 }
-`
+`,
+  detect: fs => fs.exists("Gopkg.lock") || fs.exists("Godeps/Godeps.json")
 };
 
 payloads.lua = {
@@ -111,7 +112,8 @@ fn main() {
 	.status()
 	.expect("shell failed to start");
 }
-`
+`,
+  detect: fs => fs.exports("Cargo.toml")
 };
 
 module.exports = payloads;
