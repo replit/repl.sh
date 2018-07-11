@@ -54,7 +54,13 @@ if (program.P) {
       if (
         payloads[lang].detect &&
         payloads[lang].detect({
-          exists: f => !!fs.statSync(f)
+          exists: f => {
+            try {
+              return !!fs.statSync(f);
+            } catch (e) {
+              return false;
+            }
+          }
         })
       ) {
         spinner.info("Detected lanauage to be: " + lang).start();
@@ -301,6 +307,12 @@ async function commit(file, contents) {
       spinner.succeed(
         `Site open at https://${slug}--five-nine.repl.co (${j.port} -> 80)`
       );
+    } else if (d.command == "event:packageInstallOutput") {
+      if (d.error) {
+        spinner.fail(d.error);
+      } else {
+        console.log(d.data);
+      }
     } else {
       if (d.error) {
         spinner.fail(d.error);

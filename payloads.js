@@ -77,7 +77,7 @@ import os
 os.system("TERM=$$TERM$$ /bin/bash")
 `,
   detect: fs =>
-    fs.exists("requirements.json") ||
+    fs.exists("requirements.txt") ||
     fs.exists("setup.py") ||
     fs.exists("Pipfile")
 };
