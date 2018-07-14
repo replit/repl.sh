@@ -16,6 +16,7 @@
     "url": "https://github.com/replit/repl.sh"
   },
   "dependencies": {
+    "@nodeguy/channel": "^0.6.3",
     "chokidar": "^2.0.4",
     "commander": "^2.16.0",
     "gitignore-globs": "^0.1.1",
