@@ -28,7 +28,7 @@ class Client {
 
     let sessionJSON = resp.match(/__NEXT_DATA__ = ([^\n]+)/im);
     let session = JSON.parse(sessionJSON[1]);
-    let repl = fo(session.props.initialState.repls.data);
+    let repl = fo(session.props.pageProps.initialState.repls.data);
     this.token = repl.govalToken;
     this.slug = repl.title;
     this.replid = repl.id;
@@ -116,7 +116,9 @@ class Client {
   }
 
   async connect() {
-    let client = new WebSocket("ws://" + this.options.goval + "/ws");
+    let host = this.options.goval;
+    if ( !/^wss?:/.test(host) ) host = 'wss://' + host;
+    let client = new WebSocket(host + "/ws");
     this.client = client;
     this.clean = false;
     this.buffer = [];
@@ -139,12 +141,14 @@ class Client {
     });
 
     let read = this.read.bind(this);
-    prompt("Sending Auth...");
-    await this.send({ command: "auth", data: this.token });
-    await read();
-    prompt("Waiting for ready...")
-    await this.send({ command: "select_language", data: this.payload.lang });
-    await read();
+    if ( this.token ) {
+      prompt("Sending Auth...");
+      await this.send({ command: "auth", data: this.token });
+      await read();
+      prompt("Waiting for ready...")
+      await this.send({ command: "select_language", data: this.payload.lang });
+      await read();
+    }
   }
 
   async go() {
