@@ -76,6 +76,10 @@ class Client {
       if (this.options.save) await this.commit(f, b);
     }
 
+    await this.send({
+      command: "saneTerm"
+    });
+
     if (this.payload.main) {
       await this.send({ command: "runProject", data: JSON.stringify(files) });
     } else {
@@ -86,10 +90,14 @@ class Client {
       command: "resizeTerm",
       data: JSON.stringify({cols: process.stdout.columns, rows: process.stdout.rows})
     })
-    await this.send({
-      command: "input",
-      data: "echo -en '\\r' && stty sane\r" + (this.options.send ? this.options.send + "\r" : "") 
-    });
+
+    if ( this.options.send ) {
+      await this.send({
+        command: "input",
+        data: this.options.send + "\r"
+      });
+    }
+
   }
 
   async commit(file, contents) {
@@ -223,6 +231,8 @@ class Client {
       } else if (d.command == "result") {
         if (d.error) {
           if ( d.error == 'unknown command "resizeTerm"' ) continue;
+          if ( d.error == 'unknown command "saneTerm"' ) continue;
+
           spinner.fail(d.error);
         } else if (d.data) {
           spinner.succeed(d.data);
