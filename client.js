@@ -16,6 +16,8 @@ class Client {
     this.payload = payloads[options.language];
     this.options = options;
     this.read_channel = new Channel();
+    this.mode = options.mode || 'runShell';
+    this.inputCommand = 'input';
   }
   async auth() {
     let resp = await request({
@@ -90,24 +92,40 @@ class Client {
       command: "saneTerm"
     });
 
-    if (this.payload.main) {
-      await this.send({ command: 'runProject', data: JSON.stringify(files) });
-    } else {
-      await this.send({ command: 'eval', data: payshell });
+    if ( this.mode == "runShell" ) {
+
+      if (this.payload.main) {
+        await this.send({ command: "runProject", data: JSON.stringify(files) });
+      } else {
+        await this.send({ command: "eval", data: payshell });
+      }
+    } if ( this.mode == "interp" ) {
+      this.inputCommand = 'interpInput';
+      await this.send({command: "interpInit"});
+    } else {  
+      this.inputCommand = 'shellInput';
+      await this.send({command: "shellInit"});
     }
+ 
     await new Promise(res => setTimeout(res, 1000));
+
+
     await this.send({
       command: "resizeTerm",
-      data: JSON.stringify({cols: process.stdout.columns, rows: process.stdout.rows})
-    })
+      data: JSON.stringify({
+        cols: process.stdout.columns,
+        rows: process.stdout.rows
+      })
+    });
 
-    if ( this.options.send ) {
+
+
+    if (this.options.send) {
       await this.send({
-        command: "input",
+        command: this.inputCommand,
         data: this.options.send + "\r"
       });
     }
-
   }
 
   async commit(file, contents) {
@@ -137,6 +155,7 @@ class Client {
     let host = this.options.goval;
     if (!/^wss?:/.test(host)) host = 'wss://' + host;
     let client = new WebSocket(host + '/ws');
+
     this.client = client;
     this.clean = false;
     this.buffer = [];
@@ -220,12 +239,13 @@ class Client {
           cols: process.stdout.columns,
           rows: process.stdout.rows,
         }),
+
       });
     });
 
     let writer = () => {
       if (write_buffer.length > 0) {
-        this.send({ command: 'input', data: write_buffer.join('') });
+        this.send({ command: this.inputCommand, data: write_buffer.join("") });
         write_buffer = [];
       }
       if (!this.clean) setTimeout(writer, 5);
@@ -237,11 +257,12 @@ class Client {
     let read = this.read.bind(this);
     while (!this.clean) {
       let d = await read();
-      if (d.command == 'output') {
+
+      if (d.command == "output" || d.command == "event:shellOutput" || d.command == "event:interpOutput" ) {
         //console.log(d);
         spinner.stop();
         process.stdout.write(d.data);
-      } else if (d.command == 'result') {
+      } else if (d.command == "result" || d.command == "event:interpSleep") {
         if (d.error) {
           if ( d.error == 'unknown command "resizeTerm"' ) continue;
           if ( d.error == 'unknown command "saneTerm"' ) continue;
@@ -272,6 +293,7 @@ class Client {
         }
       } else {
         if (d.error) {
+          if (d.error == 'shell exited' ) this.disconnect();
           spinner.fail(d.error);
         } else if (['write', 'files'].indexOf(d.command) == -1) {
           spinner.info(d.command + ':' + d.data);

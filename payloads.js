@@ -54,6 +54,17 @@ require('child_process').spawnSync('/bin/bash', {
   detect: fs => fs.exists("package.json")
 };
 
+payloads.reactjs = {
+  lang: "reactjs",
+  main: "index.js",
+  shell: `
+require('child_process').spawnSync('/bin/bash', {
+	env: Object.assign(process.env, {TERM: '$$TERM$$'}),
+	stdio: 'inherit'
+});
+`,
+};
+
 payloads.node = payloads.nodejs;
 payloads.js = payloads.nodejs;
 payloads.javascript = payloads.nodejs;

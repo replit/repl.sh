@@ -32,6 +32,8 @@ program
   .option("-w, --watch", "watch files for changes and resend them")
   .option("-c, --send [string]", "send string shell after connect")
   .option("-s, --save", "commit files back to the replit")
+  .option("-S, --shell", "use shell mode instead of run mode")
+  .option("    --interp", "use interpreter mode instead of run mode")
   .option("-r, --reset", "reset on change")
   .on("--help", () =>
     [
@@ -51,6 +53,16 @@ global.jar = request.jar();
 
 global.prompt = s => (spinner.text = s);
 global.spinner = ora("Let's Go!").start();
+
+program.mode = 'runShell'
+if ( program.shell ) {
+  program.mode = 'shell';
+}
+
+if ( program.interp ) {
+  program.mode = 'interp';
+}
+
 
 //Project mode
 if (program.P) {
