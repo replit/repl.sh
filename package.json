@@ -1,6 +1,6 @@
 {
   "name": "repl.sh",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Sometimes you need a shell.",
   "main": "index.js",
   "scripts": {
