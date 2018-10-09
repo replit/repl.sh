@@ -49,7 +49,6 @@ program
 
 
 let notifier = updateNotifier({ pkg: package });
-global.jar = request.jar();
 
 global.prompt = s => (spinner.text = s);
 global.spinner = ora("Let's Go!").start();
@@ -131,7 +130,7 @@ if (program.F) {
 
 let replid;
 
-if (!payloads[program.language]) {
+if (!payloads[program.language] && !program.shell) {
   spinner.fail("Unsupported language: " + program.language);
   exit(1);
 }
@@ -144,7 +143,7 @@ if (!payloads[program.language]) {
     await client.auth();
     prompt("Connecting...");
     await client.connect();
-    prompt("Starting shell.. " + (client.payload.main || "eval"));
+    prompt("Starting shell.. " + ((client.payload ? client.payload.main : '') || "eval"));
     await client.launch();
     await client.go();
     exit(0);

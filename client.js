@@ -8,6 +8,7 @@ const qs = require('querystring');
 const Channel = require(`@nodeguy/channel`);
 
 let fo = o => o[Object.keys(o)[0]];
+let jar = request.jar();
 
 const domain = 'https://repl.it';
 
@@ -15,13 +16,16 @@ class Client {
   constructor(options) {
     this.payload = payloads[options.language];
     this.options = options;
+    this.language = this.payload ? this.payload.lang : this.options.language;
     this.read_channel = new Channel();
     this.mode = options.mode || 'runShell';
     this.inputCommand = 'input';
+    this.spinner = options.spinner || spinner;
+    this.prompt = options.prompt || prompt;
   }
   async auth() {
     let resp = await request({
-      url: `${domain}/languages/${this.payload.lang}`,
+      url: `${domain}/languages/${this.language}`,
       headers: {
         //'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36'
         'User-Agent': 'Mozilla/5.0 (repl.sh)',
@@ -63,13 +67,16 @@ class Client {
   }
 
   async launch() {
-    let payshell = this.payload.shell.replace(
-      /\$\$TERM\$\$/g,
-      process.env.TERM || 'xterm-color',
-    );
+    let payshell;
+    if ( this.payload ) {
+      payshell  = this.payload.shell.replace(
+          /\$\$TERM\$\$/g,
+          process.env.TERM || 'xterm-color',
+      );
+    }
 
     let files = [];
-    if (this.payload.main) {
+    if (this.payload && this.payload.main) {
       files.push({
         name: this.payload.main,
         content: Buffer.from(payshell).toString('base64'),
@@ -138,7 +145,7 @@ class Client {
         jar: jar,
       });
     } catch (e) {
-      spinner.fail('Couldnt get token to write ' + file);
+      this.spinner.fail('Couldnt get token to write ' + file);
       console.log(e);
       return;
     }
@@ -148,7 +155,7 @@ class Client {
       method: 'PUT',
       body: contents,
     });
-    spinner.info('Wrote ' + file + ' to GCS');
+    this.spinner.info('Wrote ' + file + ' to GCS');
   }
 
   async connect() {
@@ -163,7 +170,7 @@ class Client {
 
     client.on('close', () => {
       if (this.clean) return;
-      spinner.fail('Socket closed?');
+      this.spinner.fail('Socket closed?');
       return exit(1);
     });
 
@@ -179,11 +186,11 @@ class Client {
 
     let read = this.read.bind(this);
     if (this.token) {
-      prompt('Sending Auth...');
+      this.prompt('Sending Auth...');
       await this.send({ command: 'auth', data: this.token });
       await read();
-      prompt('Waiting for ready...');
-      await this.send({ command: 'select_language', data: this.payload.lang });
+      this.prompt('Waiting for ready...');
+      await this.send({ command: 'select_language', data: this.language });
       await read();
     }
   }
@@ -198,7 +205,7 @@ class Client {
       });
       this.watcher.on('change', file => {
         if (this.options.reset) {
-          spinner.info(`File ${file} changed, restarting...`);
+          this.spinner.info(`File ${file} changed, restarting...`);
           send({ command: 'stop' }).then(() => this.launch());
         } else {
           let fj = {
@@ -228,6 +235,10 @@ class Client {
       //console.log(str, key);
       if (key.sequence == '\u001d') {
         exit(0);
+      }
+      if (key.sequence == '\u001b') {
+        this.send({ command: 'interpRun', data: ''});
+	return;
       }
       write_buffer.push(key.sequence);
     });
@@ -260,16 +271,16 @@ class Client {
 
       if (d.command == "output" || d.command == "event:shellOutput" || d.command == "event:interpOutput" ) {
         //console.log(d);
-        spinner.stop();
-        process.stdout.write(d.data);
+        this.spinner.stop();
+        process.stdout.write(d.data.replace(/zîº§|/g,'⠕'));
       } else if (d.command == "result" || d.command == "event:interpSleep") {
         if (d.error) {
           if ( d.error == 'unknown command "resizeTerm"' ) continue;
           if ( d.error == 'unknown command "saneTerm"' ) continue;
 
-          spinner.fail(d.error);
+          this.spinner.fail(d.error);
         } else if (d.data) {
-          spinner.succeed(d.data);
+          this.spinner.succeed(d.data);
         }
         if (process.stdin) {
           process.stdin.setRawMode(false);
@@ -278,25 +289,25 @@ class Client {
         this.disconnect();
         return 0;
       } else if (d.command == 'ready') {
-        prompt('Got shell, waiting for prompt');
+        this.prompt('Got shell, waiting for prompt');
       } else if (d.command == 'event:portOpen') {
         let j = JSON.parse(d.data);
-        spinner.succeed(
+        this.spinner.succeed(
           `Site open at https://${this
             .slug}--five-nine.repl.co (${j.port} -> 80)`,
         );
       } else if (d.command == 'event:packageInstallOutput') {
         if (d.error) {
-          spinner.fail(d.error);
+          this.spinner.fail(d.error);
         } else {
           console.log(d.data);
         }
       } else {
         if (d.error) {
           if (d.error == 'shell exited' ) this.disconnect();
-          spinner.fail(d.error);
+          this.spinner.fail(d.error);
         } else if (['write', 'files'].indexOf(d.command) == -1) {
-          spinner.info(d.command + ':' + d.data);
+          this.spinner.info(d.command + ':' + d.data);
         }
       }
     }
