@@ -7,7 +7,7 @@
 
 ## Install
 
-    $ npm install -g repl.it
+    $ npm install -g repl.sh
 
 ## Usage
   
