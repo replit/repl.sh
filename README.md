@@ -4,7 +4,7 @@
 
 [![NPM version][npm-version-image]][npm-url] [![NPM downloads][npm-downloads-image]][npm-url] [![MIT License][license-image]][license-url]
 
-
+[![Run on Repl.it](https://repl.it/badge/github/replit/repl.sh)](https://repl.it/github/replit/repl.sh)
 ## Install
 
     $ npm install -g repl.sh
